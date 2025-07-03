@@ -1,0 +1,7 @@
+# 특정 확장자 무시
+*.tif
+*.onnx
+*.xml
+
+# 특정 폴더 내부만 무시
+data/groundtruth/test/*
