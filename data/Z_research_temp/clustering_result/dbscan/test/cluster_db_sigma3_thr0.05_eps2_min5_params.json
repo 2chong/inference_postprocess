@@ -1,0 +1,8 @@
+{
+    "method": "dbscan",
+    "sigma": 3,
+    "threshold": 0.05,
+    "eps": 2,
+    "min_samples": 5,
+    "num_clusters": 1
+}

@@ -1,0 +1,7 @@
+{
+    "method": "relative_peaks",
+    "sigma": 3,
+    "contrast_thresh": 0.05,
+    "min_size": 10,
+    "num_clusters": 1
+}

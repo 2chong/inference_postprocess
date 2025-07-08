@@ -8,7 +8,7 @@ from utils.io import load_raster, save_raster
 
 def run_postprocessing(method, method_kwargs=None):
     input_dir = "data/confidence_map/test"
-    output_dir = f"data/postprocess_result/test/{method}"
+    output_dir = f"data/postprocess_result/{method}/test"
     os.makedirs(output_dir, exist_ok=True)
 
     conf_paths = sorted(glob.glob(os.path.join(input_dir, "*.tif")))
@@ -35,5 +35,16 @@ def run_postprocessing(method, method_kwargs=None):
 
 
 if __name__ == "__main__":
-    # 예시: morph_close 방법으로 실행
-    run_postprocessing(method='morph_close', method_kwargs={'thresh': 0.5, 'kernel_size': 5})
+    method = 'graph_cut'
+
+    params = {
+        "edge_sigma": 0.1,
+        "sigma": 2,
+        "window_size": 120,
+        "stride": 100,
+        "threshold": 0.4,
+        "delta": 0.1,
+        "bg_spacing": 20
+    }
+
+    run_postprocessing(method=method, method_kwargs=params)

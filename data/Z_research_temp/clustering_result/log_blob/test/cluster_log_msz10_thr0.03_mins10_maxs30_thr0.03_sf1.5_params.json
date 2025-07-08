@@ -1,0 +1,10 @@
+{
+    "method": "log_blob",
+    "min_sigma": 10,
+    "max_sigma": 30,
+    "num_sigma": 10,
+    "threshold": 0.03,
+    "scale_factor": 1.5,
+    "min_size": 10,
+    "num_clusters": 1
+}

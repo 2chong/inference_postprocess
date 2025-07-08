@@ -358,9 +358,9 @@ def execute_batch_segmentation(images_batch, session, config):
 
 
 def save_tile_outputs(conf_map, rgb_tile, window, index, raster_path,
-                      rgb_output_dir="data/tiles/rgb_tiles/test",
-                      conf_output_dir="data/tiles/confidence_map_tiles/test",
-                      binary_output_dir="data/tiles/binary_result_tiles/test"):
+                      rgb_output_dir="data/tiles/rgb_tiles/test1",
+                      conf_output_dir="data/tiles/confidence_map_tiles/test1",
+                      binary_output_dir="data/tiles/binary_result_tiles/test1"):
 
     os.makedirs(rgb_output_dir, exist_ok=True)
     os.makedirs(conf_output_dir, exist_ok=True)
@@ -405,7 +405,7 @@ def save_tile_outputs(conf_map, rgb_tile, window, index, raster_path,
         dst.write(conf_map.astype(np.float32), 1)
 
     # 3. 이진 마스크 저장 (uint8)
-    binary_map = (conf_map > 0.5).astype(np.uint8)
+    binary_map = (conf_map > 0.7).astype(np.uint8)
     binary_path = os.path.join(binary_output_dir, f"tile_binary_{index:04d}.tif")
     with rasterio.open(
         binary_path, 'w',
@@ -484,9 +484,9 @@ def process_tiles(raster_path, windows, indexes, session, config, progress, tota
         progress.update(f"Merging tile {idx+1}/{n}", perc=per_tile_merge_perc)
         merge_mask(tile_masks[idx], conf_merged, w, width, height, tiles_overlap, scale_factor)
     conf_merged = 1 - conf_merged
-    binary_merged = (conf_merged > 0.5).astype(np.uint8)
-    conf_merge_path = "data/confidence_map/test/conf_map.tif"
-    binary_merge_path = "data/binary_result/test/binary_map.tif"
+    binary_merged = (conf_merged > 0.9).astype(np.uint8)
+    conf_merge_path = "data/confidence_map/test3/conf_map.tif"
+    binary_merge_path = "data/binary_result/test3/binary_map.tif"
     os.makedirs(os.path.dirname(conf_merge_path), exist_ok=True)
     os.makedirs(os.path.dirname(binary_merge_path), exist_ok=True)
     with rasterio.open(

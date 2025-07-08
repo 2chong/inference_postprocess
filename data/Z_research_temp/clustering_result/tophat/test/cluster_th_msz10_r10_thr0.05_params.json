@@ -1,0 +1,7 @@
+{
+    "method": "tophat",
+    "radius": 10,
+    "threshold": 0.05,
+    "min_size": 10,
+    "num_clusters": 1
+}

@@ -1,0 +1,7 @@
+{
+    "method": "watershed",
+    "sigma": 3,
+    "contrast_thresh": 0.05,
+    "min_distance": 5,
+    "num_clusters": 1
+}

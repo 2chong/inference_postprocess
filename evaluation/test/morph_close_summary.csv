@@ -1,2 +1,0 @@
-method,GT 객체 수,GT 기준 Underseg 객체 수,Result 객체 수,Result 기준 Underseg 객체 수,GT 기준 Underseg 비율 (%),Result 기준 Underseg 비율 (%),AR@[0.5:0.95],result의 면적 (㎡)
-morph_close,40,20,28,9,50.0,32.14,0.7675,5778.12
