@@ -1,8 +1,0 @@
-{
-    "method": "region_growing",
-    "sigma": 2,
-    "size": 50,
-    "threshold_abs": 0.4,
-    "delta": 0.118,
-    "num_clusters": 1
-}

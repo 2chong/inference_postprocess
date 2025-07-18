@@ -200,7 +200,7 @@ def create_session(model_file, max_threads=None):
         'resolution': float(20),
         'class_names': json.loads(meta.get('class_names', '{}')),
         'model_type': json.loads(meta.get('model_type', '"Detector"')),
-        'tiles_overlap': float(meta.get('tiles_overlap', 15)),  # percentage
+        'tiles_overlap': float(meta.get('tiles_overlap', 50)),  # percentage
         'tiles_size': inputs[0].shape[-1],
         'input_shape': inputs[0].shape,
         'input_name': inputs[0].name,
@@ -484,9 +484,9 @@ def process_tiles(raster_path, windows, indexes, session, config, progress, tota
         progress.update(f"Merging tile {idx+1}/{n}", perc=per_tile_merge_perc)
         merge_mask(tile_masks[idx], conf_merged, w, width, height, tiles_overlap, scale_factor)
     conf_merged = 1 - conf_merged
-    binary_merged = (conf_merged > 0.9).astype(np.uint8)
-    conf_merge_path = "data/confidence_map/test3/conf_map.tif"
-    binary_merge_path = "data/binary_result/test3/binary_map.tif"
+    binary_merged = (conf_merged > 0.5).astype(np.uint8)
+    conf_merge_path = "data/confidence_map/test_av/conf_map.tif"
+    binary_merge_path = "data/binary_result/test_av/binary_map.tif"
     os.makedirs(os.path.dirname(conf_merge_path), exist_ok=True)
     os.makedirs(os.path.dirname(binary_merge_path), exist_ok=True)
     with rasterio.open(
@@ -563,41 +563,49 @@ def preprocess(model_input):
 
 
 # 5) 마스크 후처리
-def merge_mask(tile_mask, mask, window, width, height, tiles_overlap=0, scale_factor=1.0):
-    # 오버랩 계산하여 마스크 병합
+def merge_mask(tile_mask, mask, window, width, height, tiles_overlap, scale_factor=1.0):
+    # Padding + Central Crop 방식으로 마스크 병합
     w = window
-    row_off = int(w.row_off // scale_factor)  # int(np.round(w.row_off / scale_factor))
-    col_off = int(w.col_off // scale_factor)  # int(np.round(w.col_off / scale_factor))
+    row_off = int(w.row_off // scale_factor)
+    col_off = int(w.col_off // scale_factor)
     tile_w, tile_h = tile_mask.shape
 
+    # 오버랩 비율에 따른 패딩 계산
     pad_x = int(tiles_overlap * tile_w) // 2
     pad_y = int(tiles_overlap * tile_h) // 2
 
-    pad_l = 0
-    pad_r = 0
-    pad_t = 0
-    pad_b = 0
+    # 경계 조건 확인 (이미지 가장자리인 경우 패딩 조정)
+    pad_l = pad_x if w.col_off > 0 else 0
+    pad_r = pad_x if w.col_off + w.width < width else 0
+    pad_t = pad_y if w.row_off > 0 else 0
+    pad_b = pad_y if w.row_off + w.height < height else 0
 
-    if w.col_off > 0:
-        pad_l = pad_x
-    if w.col_off + w.width < width:
-        pad_r = pad_x
-    if w.row_off > 0:
-        pad_t = pad_y
-    if w.row_off + w.height < height:
-        pad_b = pad_y
+    # 중앙 영역만 사용하기 위한 좌표 계산
+    central_x_start = pad_l
+    central_y_start = pad_t
+    central_x_end = tile_w - pad_r
+    central_y_end = tile_h - pad_b
 
-    row_off += pad_t
-    col_off += pad_l
-    tile_w -= pad_l + pad_r
-    tile_h -= pad_t + pad_b
+    # 타일의 중앙 부분만 추출
+    central_tile = tile_mask[central_y_start:central_y_end, central_x_start:central_x_end]
 
-    tile_mask = tile_mask[np.newaxis, :, :]  # shape: (1, 512, 512)
-    tile_mask = tile_mask[:, pad_t:pad_t + tile_h, pad_l:pad_l + tile_w]
-    tr, sr = rect_intersect((col_off, row_off, tile_w, tile_h), (0, 0, mask.shape[1], mask.shape[0]))
-    if tr is not None and sr is not None:
-        mask[sr[1]:sr[1] + sr[3], sr[0]:sr[0] + sr[2]] = tile_mask[:, tr[1]:tr[1] + tr[3], tr[0]:tr[0] + tr[2]]
-        # mask[sr[1]:sr[1]+sr[3], sr[0]:sr[0]+sr[2]] *= (idx + 1)
+    # 최종 마스크에 중앙 부분만 복사할 위치 계산
+    dest_x_start = col_off + pad_l
+    dest_y_start = row_off + pad_t
+    dest_x_end = dest_x_start + (central_x_end - central_x_start)
+    dest_y_end = dest_y_start + (central_y_end - central_y_start)
+
+    # 이미지 경계 확인
+    dest_x_end = min(dest_x_end, mask.shape[1])
+    dest_y_end = min(dest_y_end, mask.shape[0])
+
+    # 중앙 영역 크기 조정 (경계 조건 처리)
+    central_width = dest_x_end - dest_x_start
+    central_height = dest_y_end - dest_y_start
+    central_tile = central_tile[:central_height, :central_width]
+
+    # 최종 마스크에 중앙 부분 복사 (단순 대체, 가중치 없음)
+    mask[dest_y_start:dest_y_end, dest_x_start:dest_x_end] = central_tile
 
 
 def rect_intersect(rect1, rect2):

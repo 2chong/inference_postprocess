@@ -4,7 +4,8 @@ import numpy as np
 import cv2
 import maxflow
 from scipy.ndimage import sobel
-from core.generate_seed import run_generate_seed
+from scipy.ndimage import gaussian_filter
+from core.graph_cut import graph_cut_segmentation
 
 
 def thresholding(conf_map, thresh=0.5):
@@ -31,46 +32,62 @@ def connected_components_filter(conf_map, thresh=0.5, min_area=100):
 
 
 def graph_cut(conf_map, **kwargs):
-    fg_mask, bg_mask = run_generate_seed(conf_map, **kwargs)
-    h, w = conf_map.shape
-    num_pixels = h * w
-    edge_sigma = kwargs.get("edge_sigma", 0.1)
+    """
+    Run graph cut segmentation using the standard formula with threshold-based seed generation.
 
-    # 1. 그래프 생성
-    g = maxflow.Graph[float](num_pixels, num_pixels * 4)
-    node_ids = g.add_grid_nodes((h, w))
+    Args:
+        conf_map: Confidence map
+        **kwargs: Additional parameters
+            - mode: Threshold setting mode ('gt', 'gmm', or 'kmeans', default: 'gmm')
+            - lambda_param: Weight for smoothness term (default: 100)
+            - n_iterations: Number of iterations (default: 3)
+            - n_components: Number of GMM components (default: 5)
+            - conf_map_path: Path to the confidence map (optional, used to infer gt_path and get transform/crs)
+            - connectivity: Connectivity type (4 or 8, default: 4)
+            - beta: Parameter controlling the sensitivity to intensity differences (default: 30)
 
-    # 2. Gradient 기반 edge weight 계산
-    grad_x = sobel(conf_map, axis=1)
-    grad_y = sobel(conf_map, axis=0)
-    gradient_magnitude = np.hypot(grad_x, grad_y)
-    weights = np.exp(-(gradient_magnitude ** 2) / (edge_sigma ** 2))
+    Returns:
+        Binary segmentation mask
+    """
+    # Extract parameters
+    lambda_param = kwargs.get("lambda_param", 100)
+    n_iterations = kwargs.get("n_iterations", 3)
+    n_components = kwargs.get("n_components", 5)
+    mode = kwargs.get("mode", "gmm")
+    connectivity = kwargs.get("connectivity", 4)
+    beta = kwargs.get("beta", 30)
 
-    # 3. 각 픽셀 간 edge 연결 (4-neighbor)
-    structure = np.array([[0, 1, 0],
-                          [1, 0, 1],
-                          [0, 1, 0]])
+    # Run graph cut segmentation
+    # Filter out parameters that are already explicitly passed
+    filtered_kwargs = {k: v for k, v in kwargs.items() 
+                      if k not in ['conf_map_path', 'mode', 'n_iterations', 'n_components', 'lambda_param', 'connectivity', 'beta']}
 
-    g.add_grid_edges(node_ids, weights=weights, structure=structure, symmetric=True)
+    result = graph_cut_segmentation(
+        conf_map,
+        mode=mode,
+        n_iterations=n_iterations,
+        n_components=n_components,
+        lambda_param=lambda_param,
+        connectivity=connectivity,
+        beta=beta,
+        **filtered_kwargs  # Pass only additional parameters
+    )
 
-    # 4. Source/Sink 연결 (seed 사용)
-    # 전경 seed → source
-    g.add_grid_tedges(node_ids, fg_mask.astype(bool), 0)
-
-    # 배경 seed → sink
-    g.add_grid_tedges(node_ids, 0, bg_mask.astype(bool))
-
-    # 5. Min-cut 수행
-    g.maxflow()
-    segmentation = g.get_grid_segments(node_ids)
-
-    # 6. 결과 처리
-    cut_mask = np.logical_not(segmentation).astype(np.uint8)  # foreground = 1
-
-    return cut_mask
+    return result
 
 
-def apply_postprocessing(conf_map, method='threshold', **kwargs):
+def apply_postprocessing(conf_map, method, **kwargs):
+    """
+    Apply postprocessing to confidence map.
+
+    Args:
+        conf_map: Confidence map
+        method: Postprocessing method
+        **kwargs: Additional parameters for the specific method
+
+    Returns:
+        Binary mask
+    """
     if method == 'threshold':
         return thresholding(conf_map, **kwargs)
     elif method == 'morphology':

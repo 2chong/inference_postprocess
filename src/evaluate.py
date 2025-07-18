@@ -81,7 +81,9 @@ def run(gt_path, result_path, conf_map_path, output_path, method):
 if __name__ == "__main__":
     method_name = 'graph_cut'
     ground_truth = "data/groundtruth/test"
-    postprocess_result = f"data/postprocess_result/{method_name}/test"
-    confidence_map = "data/confidence_map/test"
-    output = "evaluation/test"
+    postprocess_result = f"data/postprocess_result/{method_name}/test4"
+    confidence_map = "data/confidence_map/test_av"
+    output = "evaluation/test4"
+    os.makedirs(output, exist_ok=True)
+
     run(ground_truth, postprocess_result, confidence_map, output, method_name)

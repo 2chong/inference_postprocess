@@ -1,7 +1,0 @@
-{
-    "method": "gmm",
-    "sigma": 3,
-    "threshold": 0.05,
-    "n_components": 4,
-    "num_clusters": 1
-}
